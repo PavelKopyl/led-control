@@ -1,0 +1,52 @@
+#!/bin/bash
+
+SFIFO=/tmp/led_server_fifo
+CFIFO=/tmp/led_client_fifo.$$
+
+get_cmd_name()
+{
+	if [ "$1" = "get_state" ]; then
+		cmd_name="get-led-state"
+	elif [ "$1" = "set_state" ]; then
+		cmd_name="set-led-state"
+	elif [ "$1" = "set_color" ]; then
+		cmd_name="set-led-color"
+	elif [ "$1" = "get_color" ]; then
+		cmd_name="get-led-color"
+	elif [ "$1" = "set_rate" ]; then
+		cmd_name="set-led-rate"
+	elif [ "$1" = "get_rate" ]; then
+		cmd_name="get-led-rate"
+	else
+		return 1
+	fi
+	return 0
+}
+
+if [ ! -p $SFIFO ]; then
+	echo "'$SFIFO' does not exist"
+	exit 1
+fi
+
+if ! mkfifo $CFIFO; then 
+	echo "Can not create fifo '$cfifo'"
+	exit 1
+fi
+
+trap "unlink $CFIFO; exit 0" TERM INT
+
+while echo -n "Type command: "; read cmd prm
+do
+	if ! get_cmd_name $cmd;
+	then
+		echo "Unknown function '$cmd'"
+		continue
+	fi
+	echo "$$ ${cmd_name} ${prm}" >> $SFIFO
+	res=`< $CFIFO` 
+	echo -n "Result: $res"
+	echo
+done
+
+unlink $CFIFO
+
